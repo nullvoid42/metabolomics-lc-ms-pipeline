@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metabolomics LC-MS 分析报告 — Day 5</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #f0883e;
+    --purple: #d2a8ff;
+    --yellow: #e3b341;
+    --red: #f85149;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2332 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 60px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .logo-icon {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; flex-shrink: 0;
+  }
+  .header-text h1 { font-size: 22px; font-weight: 700; color: #fff; }
+  .header-text p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .header-badge {
+    margin-left: auto;
+    background: rgba(63,185,80,0.15);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  nav {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 60px;
+    display: flex;
+    gap: 0;
+  }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 14px 20px;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  nav a:hover, nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
+  main { padding: 40px 60px; max-width: 1400px; margin: 0 auto; }
+  .section { margin-bottom: 48px; }
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .icon { font-size: 18px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-card .label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .figure-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    gap: 16px;
+  }
+  .figure-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .figure-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .figure-caption {
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  .figure-caption strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .toc-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .toc-item .num {
+    width: 28px; height: 28px;
+    background: rgba(88,166,255,0.15);
+    color: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px;
+    flex-shrink: 0;
+  }
+  .toc-item .desc { color: var(--muted); }
+  .pipeline-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .pipeline-step {
+    background: var(--card);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pipeline-arrow { color: var(--muted); font-size: 18px; }
+  .alert {
+    background: rgba(63,185,80,0.1);
+    border: 1px solid var(--green);
+    border-radius: 6px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--green);
+    margin-bottom: 24px;
+  }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+    header, nav, main { padding: 20px; }
+    .figure-grid { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-icon">🧪</div>
+  <div class="header-text">
+    <h1>LC-MS 代谢组学分析报告</h1>
+    <p>Omics Case Study Week — Day 5 · Metabolomics</p>
+  </div>
+  <div class="header-badge">✅ Pipeline OK</div>
+</header>
+
+<nav>
+  <a href="#overview" class="active">概览</a>
+  <a href="#detection">峰检测</a>
+  <a href="#visualization">可视化</a>
+  <a href="#pipeline">分析流程</a>
+</nav>
+
+<main>
+  <!-- 概览 -->
+  <div class="section" id="overview">
+    <div class="section-title"><span class="icon">📊</span> 样本概览与质控指标</div>
+
+    <div class="alert">
+      ✅ Peak detection completed successfully · 35 features detected from 1 synthetic mzML sample
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="value">35</div>
+        <div class="label">检测到的特征峰</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">1</div>
+        <div class="label">处理的文件数</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">89–582</div>
+        <div class="label">m/z 范围 (Th)</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">2.5–20</div>
+        <div class="label">保留时间 (min)</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">604–34,973</div>
+        <div class="label">信号强度范围</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">5–290</div>
+        <div class="label">信噪比 (SNR)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-bottom:12px"><span class="icon">📋</span> 数据集信息</div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">数据类型</td>
+          <td style="padding:8px">Synthetic LC-MS mzML</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">样本数</td>
+          <td style="padding:8px">1</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">检测特征数</td>
+          <td style="padding:8px">35</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">m/z 范围</td>
+          <td style="padding:8px">89.050 – 582.256 Th</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">保留时间范围</td>
+          <td style="padding:8px">2.48 – 19.99 min</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px;color:var(--muted)">信号强度范围</td>
+          <td style="padding:8px">604 – 34,973 (a.u.)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px;color:var(--muted)">信噪比范围</td>
+          <td style="padding:8px">5.0 – 290.0</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 分析流程 -->
+  <div class="section" id="pipeline">
+    <div class="section-title"><span class="icon">🔬</span> 分析流程</div>
+    <div class="card">
+      <div class="pipeline-flow">
+        <div class="pipeline-step">Raw mzML</div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-step">Peak Detection</div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-step">Feature Alignment</div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-step">Annotation (METLIN)</div>
+        <span class="pipeline-arrow">→</span>
+        <div class="pipeline-step">Visualization</div>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">
+        <strong style="color:var(--text)">工具：</strong>pymzml (mzML解析) · scipy (峰检测) · matplotlib/seaborn (可视化) · pandas (数据处理)
+      </div>
+    </div>
+  </div>
+
+  <!-- 峰检测结果 -->
+  <div class="section" id="detection">
+    <div class="section-title"><span class="icon">🔍</span> 峰检测参数</div>
+    <div class="card" style="font-size:13px;color:var(--muted);line-height:2">
+      <div><strong style="color:var(--text);width:200px;display:inline-block">峰检测算法：</strong>Local maxima detection (scipy.signal.find_peaks_cwt)</div>
+      <div><strong style="color:var(--text);width:200px;display:inline-block">m/z 容差：</strong>0.005 Th (within scan)</div>
+      <div><strong style="color:var(--text);width:200px;display:inline-block">RT 容差：</strong>0.1 min (across scan alignment)</div>
+      <div><strong style="color:var(--text);width:200px;display:inline-block">最小 SNR：</strong>3.0</div>
+      <div><strong style="color:var(--text);width:200px;display:inline-block">最小峰强度：</strong>100 a.u.</div>
+    </div>
+  </div>
+
+  <!-- 可视化 -->
+  <div class="section" id="visualization">
+    <div class="section-title"><span class="icon">📈</span> 可视化结果</div>
+    <div class="figure-grid">
+      <div class="figure-card">
+        <img src="figures/mz_vs_rt.png" alt="m/z vs Retention Time">
+        <div class="figure-caption">
+          <strong>图1: m/z vs 保留时间散点图</strong>
+          35 个检测特征在质荷比(m/z)和保留时间(RT)二维空间的分布
+        </div>
+      </div>
+      <div class="figure-card">
+        <img src="figures/feature_summary.png" alt="Feature Summary">
+        <div class="figure-caption">
+          <strong>图2: 特征检测汇总面板</strong>
+          综合展示 TIC 轨迹、检测统计和特征分布
+        </div>
+      </div>
+      <div class="figure-card">
+        <img src="figures/intensity_distribution.png" alt="Intensity Distribution">
+        <div class="figure-caption">
+          <strong>图3: 峰强度分布</strong>
+          信号强度直方图，强度范围 604–34,973 a.u.
+        </div>
+      </div>
+      <div class="figure-card">
+        <img src="figures/snr_distribution.png" alt="SNR Distribution">
+        <div class="figure-caption">
+          <strong>图4: 信噪比分布</strong>
+          35 个特征的信噪比(SNR)分布，SNR 范围 5.0–290.0
+        </div>
+      </div>
+      <div class="figure-card">
+        <img src="figures/feature_heatmap.png" alt="Feature Heatmap">
+        <div class="figure-caption">
+          <strong>图5: 特征丰度热图</strong>
+          样本间 35 个代谢特征的相对丰度聚类热图
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 脚本列表 -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🛠️</span> 分析脚本</div>
+    <div class="toc-grid">
+      <div class="toc-item">
+        <div class="num">1</div>
+        <div><strong>peak_detection.py</strong><br><span class="desc">XML mzML 解析 + scipy 峰检测 + 特征对齐</span></div>
+      </div>
+      <div class="toc-item">
+        <div class="num">2</div>
+        <div><strong>export_mgf.py</strong><br><span class="desc">MGF 格式导出 (GNPS FBMN 上传)</span></div>
+      </div>
+      <div class="toc-item">
+        <div class="num">3</div>
+        <div><strong>visualize.py</strong><br><span class="desc">5 种可视化图表生成</span></div>
+      </div>
+      <div class="toc-item">
+        <div class="num">4</div>
+        <div><strong>annotate_metlin.py</strong><br><span class="desc">METLIN 数据库本地注释</span></div>
+      </div>
+      <div class="toc-item">
+        <div class="num">5</div>
+        <div><strong>download_gnps_data.py</strong><br><span class="desc">GNPS/MassIVE/MetaboLights 数据下载</span></div>
+      </div>
+      <div class="toc-item">
+        <div class="num">6</div>
+        <div><strong>generate_test_mzml.py</strong><br><span class="desc">合成 LC-MS 测试数据生成器</span></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
