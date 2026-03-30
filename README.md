@@ -18,6 +18,19 @@ Raw mzML → Peak Detection → Feature Alignment → Annotation → Visualizati
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Python | ≥3.9 | Core scripting |
+| pymzml | ≥3.0 | mzML file parsing |
+| scipy | ≥1.10 | Peak detection algorithms |
+| matplotlib | ≥3.7 | Visualization |
+| pandas | ≥2.0 | Tabular data handling |
+| MZmine (optional) | ≥3.0 | Full-featured GUI peak detection |
+
+> **Note:** This pipeline includes a native Python mzML parser and peak detection engine
+> that runs without any Java dependencies. The MZmine step is entirely optional
+> for users who prefer a GUI workflow.
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Python | ≥3.9 | Core scripting |
 | pymzML | ≥3.0 | mzML file parsing |
 | scipy | ≥1.10 | Peak detection algorithms |
 | matplotlib | ≥3.7 | Visualization |
@@ -146,19 +159,49 @@ cd metabolomics-lc-ms-pipeline
 # 2. Install Python dependencies
 pip install -r requirements.txt
 
-# 3. Download sample data
-python scripts/download_gnps_data.py --dataset MSV000100610 --output data/raw/
+# 3. Generate synthetic test data (or download real data)
+python scripts/generate_test_mzml.py --output data/raw/test_sample.mzML --n_spectra 500
 
 # 4. Run peak detection
 python scripts/peak_detection.py --input data/raw/ --output data/peak_list.csv
 
-# 5. Visualize results
+# 5. Export to MGF for GNPS
+python scripts/export_mgf.py --input data/peak_list.csv --output data/features.mgf
+
+# 6. Visualize results
 python scripts/visualize.py --input data/peak_list.csv --output results/figures/
+
+# Or run the full pipeline end-to-end:
+python scripts/run_pipeline.py --input data/raw/ --output results/
+```
+
+### Server Setup (weibin@106.15.234.172)
+
+```bash
+# Install conda environment
+export MAMBA_ROOT_PREFIX=/home/weibin/mamba
+~/bin/micromamba create -n metabolomics python=3.11 pymzml scipy pandas matplotlib seaborn numpy -y
+
+# Activate and run
+~/bin/micromamba activate metabolomics
+python scripts/peak_detection.py --input data/raw/ --output data/peak_list.csv
 ```
 
 ---
 
-## Output Formats
+## Local Installation
+
+```bash
+# Clone the repo
+git clone https://github.com/nullvoid42/metabolomics-lc-ms-pipeline.git
+cd metabolomics-lc-ms-pipeline
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Verify installation
+python scripts/peak_detection.py --help
+```
 
 ### Peak Table (CSV)
 ```
