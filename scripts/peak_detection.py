@@ -30,24 +30,128 @@ log = logging.getLogger("peak_detection")
 
 
 def parse_mzml(filepath: str, ms_level: int = 1):
-    """Parse mzML file and return list of (rt, mz, intensity) tuples."""
+    """Parse mzML file using Python's xml library and return list of (rt, mz, intensity) tuples."""
+    import base64
+    import struct
+    import xml.etree.ElementTree as ET
+    
     try:
-        import pymzml
-    except ImportError:
-        sys.stderr.write("ERROR: pymzml not installed. Run: pip install pymzml\n")
-        sys.exit(1)
-
+        import gzip
+        with gzip.open(filepath, 'rt', encoding='utf-8') as f:
+            content = f.read()
+        root = ET.fromstring(content)
+    except Exception:
+        root = ET.parse(filepath).getroot()
+    
     spectra = []
-    with pymzml.run.Reader(filepath) as reader:
-        for spectrum in reader:
-            if spectrum.ms_level != ms_level:
-                continue
-            rt = spectrum.scan_time_in_minutes()
-            mz_array = spectrum.mz
-            int_array = spectrum.i
-            if len(mz_array) == 0:
-                continue
-            spectra.append((rt, mz_array, int_array))
+    
+    # Find all spectrum elements (handles namespaces)
+    def find_all_spectra(elem):
+        results = []
+        for child in elem:
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local == 'spectrum':
+                results.append(child)
+            else:
+                results.extend(find_all_spectra(child))
+        return results
+    
+    # Find spectrumList
+    def find_spectrum_list(elem):
+        for child in elem:
+            tag_local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+            if tag_local == 'spectrumList':
+                return child
+            result = find_spectrum_list(child)
+            if result is not None:
+                return result
+        return None
+    
+    spectrum_list = find_spectrum_list(root)
+    if spectrum_list is None:
+        log.warning("No spectrumList found in %s", filepath)
+        return spectra
+    
+    for spec_elem in find_all_spectra(spectrum_list):
+        # Check ms level
+        ms_level_found = 1
+        for elem in spec_elem.iter():
+            tag_local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if tag_local == 'cvParam':
+                acc = elem.get('accession', '')
+                if acc == 'MS:1000511':
+                    ms_level_found = int(elem.get('value', 1))
+                    break
+        
+        if ms_level_found != ms_level:
+            continue
+        
+        # Find RT from scanList
+        rt = None
+        for scan_list in spec_elem.iter():
+            tag_local = scan_list.tag.split('}')[-1] if '}' in scan_list.tag else scan_list.tag
+            if tag_local == 'scanList':
+                for scan in scan_list:
+                    scan_tag = scan.tag.split('}')[-1] if '}' in scan.tag else scan.tag
+                    if scan_tag == 'scan':
+                        for cv in scan:
+                            cv_tag = cv.tag.split('}')[-1] if '}' in cv.tag else cv.tag
+                            if cv_tag == 'cvParam' and cv.get('accession') == 'MS:1000016':
+                                rt = float(cv.get('value', 0))
+                                unit_acc = cv.get('unitAccession', '')
+                                if unit_acc == 'UO:0000031':
+                                    pass  # already minutes
+                                elif unit_acc == 'UO:0000030':
+                                    rt = rt / 60.0 if rt else None
+                                break
+                    if rt is not None:
+                        break
+            if rt is not None:
+                break
+        
+        if rt is None:
+            continue
+        
+        # Find binary data arrays
+        arrays = {}
+        for bda_list in spec_elem.iter():
+            tag_local = bda_list.tag.split('}')[-1] if '}' in bda_list.tag else bda_list.tag
+            if tag_local == 'binaryDataArrayList':
+                for bda in bda_list:
+                    bda_tag = bda.tag.split('}')[-1] if '}' in bda.tag else bda.tag
+                    if bda_tag != 'binaryDataArray':
+                        continue
+                    
+                    array_type = None
+                    data_type_bits = 64
+                    binary_text = None
+                    
+                    for child in bda:
+                        child_tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+                        if child_tag == 'cvParam':
+                            acc = child.get('accession', '')
+                            if acc in ('MS:1000518', 'MS:1000523', 'MS:1000038'):
+                                array_type = 'mz'
+                            elif acc in ('MS:1000519', 'MS:1000521', 'MS:1000042'):
+                                array_type = 'int'
+                            elif acc == 'MS:1000516':
+                                data_type_bits = 64
+                            elif acc == 'MS:1000515':
+                                data_type_bits = 32
+                        elif child_tag == 'binary':
+                            binary_text = child.text.strip() if child.text else ''
+                    
+                    if array_type and binary_text:
+                        binary_data = base64.b64decode(binary_text)
+                        if data_type_bits == 64:
+                            fmt = f'<{len(binary_data)//8}d'
+                        else:
+                            fmt = f'<{len(binary_data)//4}f'
+                        arrays[array_type] = list(struct.unpack(fmt, binary_data))
+        
+        if 'mz' in arrays and 'int' in arrays and len(arrays['mz']) > 0:
+            spectra.append((rt, arrays['mz'], arrays['int']))
+    
     log.info("  Parsed %d spectra from %s", len(spectra), Path(filepath).name)
     return spectra
 
